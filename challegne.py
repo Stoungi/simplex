@@ -13,23 +13,17 @@ from simplex_imp import simplex
 
 """
 
-c = [1, 2]  # objective function    
+c = "max 1+2"  # objective function    
 
-A = [[1, 0]] # 1st constraint (left hand side)   
-      
-     
-
-b = [5] # 1st contraint (right hand side)
+Ab = ["1+0 <= 5"] # 1st constraint
      
 
 
 
-simp = simplex(c,A,b)
+simp = simplex(c, Ab)
 
 simp.show_steps()
 print("Optimal solution:", simp.optimal)
 print("Maximum value:", simp.value)
 
 print("steps taken: ", simp.steps)
-
-
