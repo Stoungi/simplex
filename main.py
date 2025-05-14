@@ -2,20 +2,6 @@
 from simplex_imp import simplex
 
 
-
-"""
-z = 50x + 30y
-
-4x + 3y <= 240
-
-y <= 40
-
-x <= 36
-"""
-
-     
-
-     
 c = "min -6+7+4"
 Ab = ["2+5-1 <= 18", 
       "1-1-2 <= -14",
