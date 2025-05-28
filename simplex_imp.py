@@ -120,12 +120,6 @@ class simplex:
         # Save the formatted string
         self.tableau_log.append("\n".join(lines))
         self.steps = len(self.tableau_log)
-
-    def show_steps(self, count = None):
-        if count is None:
-            count = self.steps  # Use self.steps as the default
-        for tableau in self.tableau_log[:count]:
-            print(tableau)
             
     def show_range(self, start="0", end=None):
         """
@@ -137,8 +131,9 @@ class simplex:
         """
         if end is None:
             end = self.steps
-        if start.lower() == "last":
-            start = end-1
+        if isinstanve(start, str):
+            if start.lower() == "last":
+                start = end-1
         for tableau, solution in zip(self.tableau_log[int(start):end], self.solutions[int(start):end]):
             print(tableau)
             print(solution)
