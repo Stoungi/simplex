@@ -141,7 +141,7 @@ class simplex:
         for tableau in self.tableau_log[start:end]:
             print(tableau)
 
-    def __init__(self, c, Ab, c_sign="max"):
+    def __init__(self, c, Ab):
         """
         Solves a linear programming problem using the Simplex algorithm.
         Handles all constraint types: <=, >= and =
