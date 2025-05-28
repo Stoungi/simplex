@@ -131,7 +131,7 @@ class simplex:
         """
         if end is None:
             end = self.steps
-        if isinstanve(start, str):
+        if isinstance(start, str):
             if start.lower() == "last":
                 start = end-1
         for tableau, solution in zip(self.tableau_log[int(start):end], self.solutions[int(start):end]):
