@@ -127,7 +127,7 @@ class simplex:
         for tableau in self.tableau_log[:count]:
             print(tableau)
             
-    def show_range(self, start=0, end=None):
+    def show_range(self, start="0", end=None):
         """
         Displays a specific range of tableau steps.
 
@@ -137,9 +137,11 @@ class simplex:
         """
         if end is None:
             end = self.steps
-
-        for tableau in self.tableau_log[start:end]:
+        if start.lower() == "last":
+            start = end-1
+        for tableau, solution in zip(self.tableau_log[int(start):end], self.solutions[int(start):end]):
             print(tableau)
+            print(solution)
 
     def __init__(self, c, Ab):
         """
@@ -155,6 +157,8 @@ class simplex:
             Ab (list of strings): Constraints in the format "ax1+bx2+... (<=,=,>=) c"
             c_sign (str): "max" for maximization, "min" for minimization
         """
+        self.solutions = []
+        self.tableau_log = []
         c_sign, c = self._parse_objective_string(c)
         c = np.array(c)
         A, b, signs = self._format_text(Ab)
@@ -236,7 +240,7 @@ class simplex:
             
             # Check if all artificial variables are zero (feasible solution)
             if abs(tableau[-1, -1]) > 1e-10:  # If not close to zero
-                raise Exception("No feasible solution exists")
+                self.solutions.append("<No feasible solution found.>")
             
             # Prepare for Phase II by removing artificial columns and setting up original objective
             # Keep track of which columns to keep (all except artificial)
@@ -313,6 +317,7 @@ class simplex:
         self.value = tableau[-1, -1] * fix_sign
         self.tableau_final_value = tableau[-1, -1] 
 
+
     def _solve_tableau(self, tableau, original_var_count, phase=None):
         """
         Solves the simplex tableau using the simplex algorithm.
@@ -327,15 +332,43 @@ class simplex:
         """
         m = tableau.shape[0] - 1  # Number of constraints (excluding objective row)
 
-    
-
         # Main loop of the Simplex method
         max_iterations = 100  # Prevent infinite loops
         iteration = 0
         
         while iteration < max_iterations:
             iteration += 1
+            
+            # Store tableau snapshot and current phase info
             self.store_tableau(tableau, original_var_count, phase)
+            
+            # Extract current basic feasible solution for original variables
+            solution = np.zeros(original_var_count)
+            # Find basic variables and their values
+            for j in range(original_var_count):  # Iterate through original variables
+                # Check if this column is a basic column (one '1' and rest '0's)
+                basic_row_idx = -1
+                is_basic_column = False
+                
+                # Find the row where this variable is basic (if any)
+                for i in range(m):
+                    if abs(tableau[i, j] - 1.0) < 1e-10:  # Found a 1
+                        basic_row_idx = i
+                        break
+                
+                if basic_row_idx != -1:  # Potential basic variable found
+                    is_basic_column = True
+                    for k in range(m):
+                        if k != basic_row_idx and abs(tableau[k, j]) > 1e-10:
+                            is_basic_column = False
+                            break
+                
+                if is_basic_column:
+                    solution[j] = tableau[basic_row_idx, -1]
+                # else it's a non-basic variable, which defaults to 0.0 in solution array
+            
+            # Append the solution snapshot to solutions list
+            self.solutions.append(solution.copy())
             
             # Step 1: Identify entering variable (most negative value in objective row)
             col = np.argmin(tableau[-1, :-1])  # Ignore RHS column
@@ -355,19 +388,63 @@ class simplex:
                 
             # Find minimum positive ratio
             row = np.argmin(ratios)
-
             
             # Step 3: Perform pivoting
             pivot = tableau[row, col]
+            if abs(pivot) < 1e-10:  # Check for near-zero pivot
+                raise ValueError(f"Pivot element at ({row}, {col}) is too close to zero ({pivot:.2e}). Cannot perform pivot.")
+                
             tableau[row] /= pivot  # Normalize pivot row
             
             # Zero out the pivot column in all other rows
             for i in range(tableau.shape[0]):
                 if i != row:
                     tableau[i] -= tableau[i, col] * tableau[row]
-
+                    
         if iteration >= max_iterations:
             print("Warning: Maximum iterations reached, solution may not be optimal")
             
         return tableau
+        
+    
+    @staticmethod
+    def compare(simple, step=None):
+        s1, s2 = simple
+        """
+        Compare two Simplex instances side by side.
+        If one finishes early, its last tableau and solution stay displayed.
+        """
+        steps1 = s1.steps
+        steps2 = s2.steps
+        total_steps = max(steps1, steps2)
 
+        def get_safe_entry(simplex_obj, idx): # Renamed to avoid conflict with class name
+            # Clamp to the last index if idx is too high
+            safe_idx = min(idx, simplex_obj.steps - 1)
+            tableau_str = simplex_obj.tableau_log[safe_idx] if safe_idx < len(simplex_obj.tableau_log) else "<no tableau>"
+            solution = simplex_obj.solutions[safe_idx] if safe_idx < len(simplex_obj.solutions) else "<no solution>"
+            return tableau_str.splitlines(), solution
+
+        steps_to_run = [step] if step is not None else range(total_steps)
+
+        for idx in steps_to_run:
+            lines1, sol1 = get_safe_entry(s1, idx)
+            lines2, sol2 = get_safe_entry(s2, idx)
+
+            max_lines = max(len(lines1), len(lines2))
+            width1 = max((len(line) for line in lines1), default=20)
+            width2 = max((len(line) for line in lines2), default=20)
+
+            title1 = f"Simplex 1 (Step {min(idx, s1.steps - 1)})"
+            title2 = f"Simplex 2 (Step {min(idx, s2.steps - 1)})"
+
+            print(f"{title1:<{width1}}    {title2}")
+            print("=" * (width1 + 5 + width2))
+
+            for j in range(max_lines):
+                l1 = lines1[j] if j < len(lines1) else ""
+                l2 = lines2[j] if j < len(lines2) else ""
+                print(f"{l1:<{width1}}    {l2}")
+
+            print("=" * (width1 + 5 + width2))
+            print(f"{'Optimal Solution 1: ' + str(sol1):<{width1}}    Optimal Solution 2: {sol2}\n")
